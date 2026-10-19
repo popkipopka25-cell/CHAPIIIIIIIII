@@ -1,15 +1,10 @@
 
 """Вспомогательные функции Чапи."""
 import re
-from contextvars import ContextVar
 from html import escape
 
-# Ранг, установленный командой .дк для текущей команды.
-COMMAND_MIN_RANK: ContextVar[int | None] = ContextVar(
-    "command_min_rank", default=None
-)
 
-# Новая система рангов: 0–5.
+# Ранги: 0–5. Эти значения используются во всех проверках прав.
 RANK_NAMES = {
     0: "Участник",
     1: "Младший модератор",
@@ -63,6 +58,7 @@ TIME_UNITS = {
 
 
 def parse_duration(text: str) -> int | None:
+    """Преобразует срок вроде 10м, 2ч или 3д в секунды."""
     if not isinstance(text, str) or len(text) > 32:
         return None
 
@@ -77,10 +73,14 @@ def parse_duration(text: str) -> int | None:
     seconds = int(match.group(1)) * TIME_UNITS[match.group(2)]
     if seconds <= 0 or seconds > 365 * 86400:
         return None
+
     return seconds
 
 
 def format_duration(seconds: int) -> str:
+    """Кратко форматирует срок."""
+    seconds = max(0, int(seconds))
+
     if seconds >= 86400 and seconds % 86400 == 0:
         return f"{seconds // 86400} дн."
     if seconds >= 3600 and seconds % 3600 == 0:
@@ -91,19 +91,19 @@ def format_duration(seconds: int) -> str:
 
 
 def has_at_least(role: str, required: str) -> bool:
-    """Проверяет роль и дополнительный ранг из .дк."""
-    custom_rank = COMMAND_MIN_RANK.get()
-    actual_rank = ROLE_RANKS.get(role, 0)
+    """Проверяет встроенные права команды. При неизвестной роли — отказ."""
+    if role not in ROLE_LEVELS or required not in ROLE_LEVELS:
+        return False
 
-    if custom_rank is not None:
-        return actual_rank >= custom_rank
-
-    return ROLE_LEVELS.get(role, 0) >= ROLE_LEVELS.get(required, 0)
+    return ROLE_LEVELS[role] >= ROLE_LEVELS[required]
 
 
 def can_act_on(actor_role: str, target_role: str) -> bool:
     """Нельзя применять действия к равной или более высокой роли."""
-    return ROLE_LEVELS.get(actor_role, 0) > ROLE_LEVELS.get(target_role, 0)
+    if actor_role not in ROLE_LEVELS or target_role not in ROLE_LEVELS:
+        return False
+
+    return ROLE_LEVELS[actor_role] > ROLE_LEVELS[target_role]
 
 
 async def resolve_target(message, args: list[str], db_module):
@@ -117,9 +117,11 @@ async def resolve_target(message, args: list[str], db_module):
         if token.isascii() and token.isdigit():
             if len(token) > 19:
                 return None, "Числовой ID слишком длинный."
+
             value = int(token)
             if 0 < value <= 9_223_372_036_854_775_807:
                 return value, None
+
             return None, "Укажите корректный положительный Telegram ID."
 
         if token.startswith("@"):
@@ -135,6 +137,7 @@ async def resolve_target(message, args: list[str], db_module):
 
 
 def mention(user_id: int, name: str | None) -> str:
+    """Создаёт безопасное HTML-упоминание Telegram-пользователя."""
     safe_name = escape(str(name or user_id), quote=True)
     return f'<a href="tg://user?id={int(user_id)}">{safe_name}</a>'
 
@@ -148,7 +151,8 @@ def _plural(n: int, one: str, few: str, many: str) -> str:
 
 
 def human_duration(seconds: int) -> str:
-    seconds = int(seconds)
+    """Форматирует срок словами."""
+    seconds = max(0, int(seconds))
     parts = []
 
     for size, forms in (
