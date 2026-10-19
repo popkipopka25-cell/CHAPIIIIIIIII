@@ -1,0 +1,280 @@
+
+"""Настройка минимальных рангов команд через .дк."""
+from __future__ import annotations
+
+import time
+import re
+
+from aiogram import BaseMiddleware, F, Router
+from aiogram.types import Message
+
+import config
+import database as db
+
+router = Router()
+router.message.filter(F.chat.type.in_({"group", "supergroup"}))
+
+RANK_NAMES = {
+    0: "Участник",
+    1: "Младший модератор",
+    2: "Старший модератор",
+    3: "Младший админ",
+    4: "Старший админ",
+    5: "Создатель",
+}
+
+# Код команды: названия команды.
+COMMANDS = {
+    10: ("помощь", "help"),
+    11: ("мой id",),
+    12: ("кто админ",),
+    13: ("инфо группы",),
+    14: ("профиль",),
+    20: ("мут",),
+    21: ("размут", "снять мут", "анмут"),
+    22: ("варн",),
+    23: ("варны",),
+    24: ("мои варны", "варнлист"),
+    25: ("снять варн",),
+    26: ("снять все варны",),
+    27: ("проверить мут",),
+    28: ("муты",),
+    29: ("банлист", "список банов", "баны"),
+    30: ("причина",),
+    31: ("бан",),
+    32: ("разбан",),
+    33: ("кик",),
+    34: ("роль",),
+    35: ("журнал",),
+    36: ("жалоба",),
+    37: ("обжалование",),
+    38: ("дела",),
+    39: ("дело принять",),
+    40: ("дело отклонить",),
+    41: ("дело",),
+    50: ("баланс",),
+    51: ("бонус",),
+    52: ("перевести",),
+    53: ("топ",),
+    54: ("магазин",),
+    55: ("купить",),
+    56: ("инвентарь",),
+    57: ("подарить",),
+    58: ("история",),
+    59: ("задания",),
+    60: ("достижения",),
+    61: ("премиум статус",),
+    62: ("премиум выдать",),
+    63: ("премиум снять",),
+    64: ("статус установить",),
+    65: ("статус",),
+    66: ("выдать",),
+    67: ("забрать",),
+    68: ("товар добавить",),
+    69: ("товар удалить",),
+    70: ("брак",),
+    71: ("принять брак",),
+    72: ("отклонить брак",),
+    73: ("мой брак",),
+    74: ("развод",),
+    75: ("восстановить брак",),
+    76: ("принять восстановление брака",),
+    77: ("отклонить восстановление брака",),
+    80: ("создать клан",),
+    81: ("мой клан",),
+    82: ("клан участники",),
+    83: ("клан заявка",),
+    84: ("моя заявка в клан",),
+    85: ("отменить заявку в клан",),
+    86: ("клан выйти",),
+    90: ("монетка", "орёл или решка"),
+    91: ("кости", "кубик"),
+    92: ("случайное число",),
+    100: ("заметка создать",),
+    101: ("заметка",),
+    102: ("заметка удалить",),
+    103: ("заметки",),
+    104: ("автоответ добавить",),
+    105: ("автоответ удалить",),
+    106: ("автоответы",),
+    110: ("настройки",),
+    111: ("настройка",),
+    112: ("приветствие текст",),
+    113: ("спам",),
+}
+
+# Сначала проверяем более длинные команды, чтобы
+# "снять все варны" не определялось как "снять варн".
+ALIASES = sorted(
+    ((alias, code) for code, names in COMMANDS.items() for alias in names),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+
+
+async def ensure_table():
+    conn = await db.get_db()
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS command_rank_overrides (
+            chat_id INTEGER NOT NULL,
+            command_code INTEGER NOT NULL,
+            min_rank INTEGER NOT NULL CHECK(min_rank BETWEEN 0 AND 5),
+            updated_by INTEGER NOT NULL,
+            updated_at REAL NOT NULL,
+            PRIMARY KEY (chat_id, command_code)
+        )
+    """)
+    await conn.commit()
+
+
+def detect_command(text: str) -> int | None:
+    first_line = (text or "").split("\n", 1)[0].strip().lower()
+    for alias, code in ALIASES:
+        if re.match(r"^" + re.escape(alias) + r"(?:\s|$)", first_line):
+            return code
+    return None
+
+
+async def get_rank(message: Message) -> int:
+    if not message.from_user:
+        return 0
+
+    # Только настоящий владелец этого бота получает ранг 5.
+    if message.from_user.id == int(config.OWNER_TELEGRAM_ID):
+        return 5
+
+    from handlers.moderation import effective_role
+
+    role = await effective_role(
+        message.bot, message.chat.id, message.from_user.id
+    )
+
+    return {
+        "user": 0,
+        "agent": 1,
+        "moderator": 2,
+        "admin": 3,
+        "owner": 4,
+    }.get(role, 0)
+
+
+async def get_override(chat_id: int, code: int) -> int | None:
+    conn = await db.get_db()
+    cursor = await conn.execute(
+        """SELECT min_rank FROM command_rank_overrides
+           WHERE chat_id=? AND command_code=?""",
+        (chat_id, code),
+    )
+    row = await cursor.fetchone()
+    return int(row["min_rank"]) if row else None
+
+
+class CommandRankMiddleware(BaseMiddleware):
+    """Дополнительная проверка минимального ранга команды."""
+
+    async def __call__(self, handler, event, data):
+        if not isinstance(event, Message) or not event.text:
+            return await handler(event, data)
+
+        if not event.from_user:
+            return await handler(event, data)
+
+        if event.text.strip().lower().startswith(".дк"):
+            return await handler(event, data)
+
+        code = detect_command(event.text)
+        if code is None:
+            return await handler(event, data)
+
+        try:
+            await ensure_table()
+            minimum = await get_override(event.chat.id, code)
+            if minimum is not None:
+                rank = await get_rank(event)
+                if rank < minimum:
+                    await event.reply(
+                        f"⛔ Для этой команды нужен ранг "
+                        f"{minimum} — {RANK_NAMES[minimum]}."
+                    )
+                    return
+        except Exception:
+            # При ошибке не выдаём дополнительных прав.
+            await event.reply(
+                "⚠️ Не удалось проверить настройки рангов. "
+                "Команда не выполнена."
+            )
+            return
+
+        # Обычные проверки доступа в исходном обработчике сохраняются.
+        return await handler(event, data)
+
+
+@router.message(F.text.regexp(r"(?i)^\.дк(?:\s|$)"))
+async def command_rank_settings(message: Message):
+    if not message.from_user:
+        return
+
+    # Изменять настройки рангов может только создатель бота.
+    if message.from_user.id != int(config.OWNER_TELEGRAM_ID):
+        await message.reply("⛔ Настраивать .дк может только создатель бота.")
+        return
+
+    await ensure_table()
+    parts = message.text.split()
+
+    if len(parts) == 1:
+        lines = [
+            f"{code} — {', '.join(names)}"
+            for code, names in sorted(COMMANDS.items())
+        ]
+        await message.reply(
+            "📋 <b>Коды команд</b>\n\n"
+            + "\n".join(lines)
+            + "\n\nНастройка: <code>.дк КОД РАНГ</code>\n"
+            + "Ранги: 0–5.",
+            parse_mode="HTML",
+        )
+        return
+
+    if len(parts) != 3 or not parts[1].isdigit() or not parts[2].isdigit():
+        await message.reply(
+            "Формат: .дк КОД РАНГ\n"
+            "Пример: .дк 20 3"
+        )
+        return
+
+    code = int(parts[1])
+    rank = int(parts[2])
+
+    if code not in COMMANDS:
+        await message.reply("❌ Неизвестный код команды. Напиши .дк.")
+        return
+
+    if rank not in RANK_NAMES:
+        await message.reply("❌ Ранг должен быть числом от 0 до 5.")
+        return
+
+    conn = await db.get_db()
+    await conn.execute(
+        """INSERT INTO command_rank_overrides
+           (chat_id, command_code, min_rank, updated_by, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(chat_id, command_code) DO UPDATE SET
+             min_rank=excluded.min_rank,
+             updated_by=excluded.updated_by,
+             updated_at=excluded.updated_at""",
+        (
+            message.chat.id,
+            code,
+            rank,
+            message.from_user.id,
+            time.time(),
+        ),
+    )
+    await conn.commit()
+
+    await message.reply(
+        f"✅ Для команды «{', '.join(COMMANDS[code])}» "
+        f"установлен минимальный ранг {rank} "
+        f"— {RANK_NAMES[rank]}."
+    )
