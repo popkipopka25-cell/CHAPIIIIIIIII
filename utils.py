@@ -1,10 +1,16 @@
 
 """Вспомогательные функции Чапи."""
 import re
+from contextvars import ContextVar
 from html import escape
 
 
-# Ранги: 0–5. Эти значения используются во всех проверках прав.
+# Оставлено для совместимости со старым кодом.
+# Не использовать для обхода встроенных проверок прав.
+COMMAND_MIN_RANK: ContextVar[int | None] = ContextVar(
+    "command_min_rank", default=None
+)
+
 RANK_NAMES = {
     0: "Участник",
     1: "Младший модератор",
@@ -14,6 +20,8 @@ RANK_NAMES = {
     5: "Создатель",
 }
 
+# Ранги согласованы с handlers/command_rights.py:
+# owner — владелец Telegram-группы, creator — создатель бота.
 ROLE_RANKS = {
     "user": 0,
     "agent": 1,
@@ -21,39 +29,53 @@ ROLE_RANKS = {
     "moderator": 2,
     "senior_moderator": 2,
     "junior_admin": 3,
-    "admin": 4,
+    "admin": 3,
     "senior_admin": 4,
-    "owner": 5,
+    "owner": 4,
     "creator": 5,
 }
 
-# Сохраняем совместимость с существующими проверками проекта.
+# Сохраняем совместимость с проверками старых обработчиков.
 ROLE_LEVELS = {
     role: rank * 20
     for role, rank in ROLE_RANKS.items()
 }
 
 ROLE_NAMES = {
-    "owner": "Создатель",
-    "creator": "Создатель",
-    "admin": "Старший админ",
-    "senior_admin": "Старший админ",
-    "junior_admin": "Младший админ",
+    "user": "Участник",
+    "agent": "Младший модератор",
+    "junior_moderator": "Младший модератор",
     "moderator": "Старший модератор",
     "senior_moderator": "Старший модератор",
-    "junior_moderator": "Младший модератор",
-    "agent": "Младший модератор",
-    "user": "Участник",
+    "junior_admin": "Младший админ",
+    "admin": "Младший админ",
+    "senior_admin": "Старший админ",
+    "owner": "Старший админ",
+    "creator": "Создатель",
 }
 
 TIME_UNITS = {
-    "с": 1, "сек": 1, "секунда": 1, "секунду": 1,
-    "секунды": 1, "секунд": 1,
-    "м": 60, "мин": 60, "минута": 60, "минуту": 60,
-    "минуты": 60, "минут": 60,
-    "ч": 3600, "час": 3600, "часа": 3600, "часов": 3600,
-    "д": 86400, "дн": 86400, "день": 86400,
-    "дня": 86400, "дней": 86400,
+    "с": 1,
+    "сек": 1,
+    "секунда": 1,
+    "секунду": 1,
+    "секунды": 1,
+    "секунд": 1,
+    "м": 60,
+    "мин": 60,
+    "минута": 60,
+    "минуту": 60,
+    "минуты": 60,
+    "минут": 60,
+    "ч": 3600,
+    "час": 3600,
+    "часа": 3600,
+    "часов": 3600,
+    "д": 86400,
+    "дн": 86400,
+    "день": 86400,
+    "дня": 86400,
+    "дней": 86400,
 }
 
 
@@ -70,7 +92,10 @@ def parse_duration(text: str) -> int | None:
     if not match:
         return None
 
-    seconds = int(match.group(1)) * TIME_UNITS[match.group(2)]
+    amount = int(match.group(1))
+    unit = match.group(2)
+    seconds = amount * TIME_UNITS[unit]
+
     if seconds <= 0 or seconds > 365 * 86400:
         return None
 
@@ -87,32 +112,42 @@ def format_duration(seconds: int) -> str:
         return f"{seconds // 3600} ч."
     if seconds >= 60 and seconds % 60 == 0:
         return f"{seconds // 60} мин."
+
     return f"{seconds} сек."
 
 
 def has_at_least(role: str, required: str) -> bool:
-    """Проверяет встроенные права команды. При неизвестной роли — отказ."""
-    if role not in ROLE_LEVELS or required not in ROLE_LEVELS:
+    """Проверяет обязательный уровень доступа без обхода через .дк."""
+    actual_level = ROLE_LEVELS.get(role)
+    required_level = ROLE_LEVELS.get(required)
+
+    # Неизвестная роль или неизвестное требование — отказ.
+    if actual_level is None or required_level is None:
         return False
 
-    return ROLE_LEVELS[role] >= ROLE_LEVELS[required]
+    return actual_level >= required_level
 
 
 def can_act_on(actor_role: str, target_role: str) -> bool:
     """Нельзя применять действия к равной или более высокой роли."""
-    if actor_role not in ROLE_LEVELS or target_role not in ROLE_LEVELS:
+    actor_level = ROLE_LEVELS.get(actor_role)
+    target_level = ROLE_LEVELS.get(target_role)
+
+    if actor_level is None or target_level is None:
         return False
 
-    return ROLE_LEVELS[actor_role] > ROLE_LEVELS[target_role]
+    return actor_level > target_level
 
 
 async def resolve_target(message, args: list[str], db_module):
     """Определяет цель по ответу, @username или Telegram ID."""
-    if message.reply_to_message and message.reply_to_message.from_user:
-        return message.reply_to_message.from_user.id, None
+    reply = message.reply_to_message
+
+    if reply and reply.from_user:
+        return reply.from_user.id, None
 
     if args:
-        token = args[0]
+        token = args[0].strip()
 
         if token.isascii() and token.isdigit():
             if len(token) > 19:
@@ -124,20 +159,22 @@ async def resolve_target(message, args: list[str], db_module):
 
             return None, "Укажите корректный положительный Telegram ID."
 
-        if token.startswith("@"):
+        if token.startswith("@") and len(token) > 1:
             user_id = await db_module.find_user_by_username(token)
+
             if user_id is None:
                 return None, (
                     f"Не знаю пользователя {token}. Он должен сначала "
                     "написать в группе либо используйте ответ на его сообщение."
                 )
+
             return user_id, None
 
     return None, "Ответьте на сообщение пользователя, укажите @username или ID."
 
 
 def mention(user_id: int, name: str | None) -> str:
-    """Создаёт безопасное HTML-упоминание Telegram-пользователя."""
+    """Создаёт HTML-упоминание пользователя Telegram."""
     safe_name = escape(str(name or user_id), quote=True)
     return f'<a href="tg://user?id={int(user_id)}">{safe_name}</a>'
 
@@ -162,8 +199,10 @@ def human_duration(seconds: int) -> str:
         (1, ("секунду", "секунды", "секунд")),
     ):
         count, seconds = divmod(seconds, size)
+
         if count:
             parts.append(f"{count} {_plural(count, *forms)}")
+
         if len(parts) == 2:
             break
 
