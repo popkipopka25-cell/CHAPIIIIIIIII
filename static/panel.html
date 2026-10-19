@@ -1,48 +1,711 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101522"><title>Чапи — панель владельца</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101522">
+<title>Чапи — Панель управления</title>
 <style>
-:root{color-scheme:dark;--bg:#101522;--panel:#171f31;--card:#1c2940;--line:#2c3a54;--text:#f4f6fb;--muted:#9ba8bd;--yellow:#ffd34e;--green:#55d6a0;--red:#ff7585}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#1a2942 0%,var(--bg) 55%);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);min-height:100vh}button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--yellow);color:#191d27;transition:transform .16s,filter .16s}button:active{transform:scale(.97)}button.secondary{background:#2a3850;color:var(--text);border:1px solid var(--line)}button.danger{background:#5a2634;color:#ffdce1;border:1px solid #83404e}input,select{width:100%;min-width:0;background:#101827;border:1px solid var(--line);border-radius:11px;padding:12px;color:var(--text);outline:none}input:focus,select:focus{border-color:var(--yellow)}.wrap{max-width:1120px;margin:auto;padding:20px 15px 50px}.brand{display:flex;align-items:center;gap:12px;margin:5px 0 20px}.logo{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:var(--yellow);color:#171d2a;font-size:24px}.brand h1{font-size:22px;margin:0}.brand p{margin:1px 0 0;color:var(--muted);font-size:13px}.login,.card{background:linear-gradient(145deg,#1b263a,#151e2f);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 12px 35px #0002}.login{max-width:420px;margin:8vh auto}.login h2{margin:0 0 8px}.muted{color:var(--muted)}.stack{display:grid;gap:12px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.hidden{display:none!important}.nav{display:flex;gap:8px;overflow:auto;padding:0 0 14px;margin-bottom:14px}.nav button{white-space:nowrap;flex:0 0 auto}.nav button.active{background:var(--yellow);color:#171d2a}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}.stat .num{font-size:27px;font-weight:800;color:var(--yellow)}.stat .label{color:var(--muted);font-size:13px}.section{display:grid;gap:14px}.section h2{font-size:19px;margin:0}.section h3{font-size:15px;margin:0}.list{display:grid;gap:9px}.item{background:#131d2d;border:1px solid var(--line);border-radius:13px;padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}.item .details{min-width:0;overflow-wrap:anywhere}.item small{display:block;color:var(--muted);margin-top:3px}.toggle{flex:0 0 auto;width:48px;height:28px;border-radius:20px;padding:3px;background:#3a465a;border:1px solid #536078}.toggle span{display:block;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .16s}.toggle.on{background:#34795e}.toggle.on span{transform:translateX(20px)}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.msg{padding:11px 13px;border-radius:12px;background:#26344a;color:var(--text);margin-bottom:12px;overflow-wrap:anywhere}.msg.error{background:#512832}.msg.success{background:#1c493b}.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}.empty{color:var(--muted);padding:20px;text-align:center;border:1px dashed var(--line);border-radius:13px}.badge{font-size:12px;border-radius:999px;background:#293750;padding:4px 8px;color:#dbe5f5}.subnav{display:flex;gap:8px;flex-wrap:wrap}.subnav button{font-size:13px;padding:9px 11px}.item button{padding:8px 10px;font-size:13px}.wide{width:100%}
-@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap{padding:15px 12px 35px}.brand h1{font-size:20px}.card{padding:14px}.formgrid{grid-template-columns:1fr}.item{align-items:flex-start}.item .actions{flex:0 0 auto}.stat .num{font-size:24px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
-</style></head>
-<body><main class="wrap">
-<header class="brand"><div class="logo">✦</div><div><h1>Чапи <span class="muted">/ владелец</span></h1><p>Защищённая панель управления ботом</p></div><div style="margin-left:auto"><button id="logout" class="secondary hidden">Выйти</button></div></header>
-<div id="notice" class="msg hidden" role="status"></div>
-<section id="loginView" class="login"><h2>Вход владельца</h2><p class="muted">Введите пароль панели, заданный в переменных окружения хостинга.</p><form id="loginForm" class="stack"><input id="password" type="password" autocomplete="current-password" placeholder="Пароль панели" required maxlength="1024"><button class="wide" type="submit">Войти в панель</button></form><p class="muted" style="font-size:12px;margin-bottom:0">Не вводите сюда токен Telegram-бота.</p></section>
-<section id="appView" class="hidden"><nav class="nav" id="nav"><button data-tab="overview" class="active">📊 Обзор</button><button data-tab="groups">👥 Группы</button><button data-tab="modules">🧩 Модули</button><button data-tab="staff">🛡 Штат</button><button data-tab="spam">🚫 Спам-блок</button><button data-tab="logs">📜 Журнал</button></nav><div id="content" class="section"></div></section>
-<footer class="foot">Чапи • изменения применяются к общей базе данных бота</footer></main>
+:root {
+  color-scheme: dark;
+  --bg:#101522;
+  --panel:#171f31;
+  --card:#1b2740;
+  --border:#2b3852;
+  --text:#f3f6ff;
+  --muted:#98a7c3;
+  --yellow:#ffd43b;
+  --blue:#6ea8ff;
+  --red:#ff697d;
+  --green:#5de0a0;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px;line-height:1.5;
+}
+button,input,select{font:inherit}
+button{cursor:pointer;transition:transform .15s,opacity .15s,background .15s}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{
+  width:100%;min-width:0;background:#101827;border:1px solid var(--border);
+  color:var(--text);padding:12px;border-radius:11px;outline:none;
+}
+input:focus,select:focus{border-color:var(--yellow)}
+button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.yellow{color:var(--yellow)}
+.topbar{
+  position:sticky;top:0;z-index:5;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:14px 18px;
+  background:#101522ed;border-bottom:1px solid var(--border);
+  backdrop-filter:blur(15px);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.logo{
+  width:38px;height:38px;display:grid;place-items:center;
+  background:var(--yellow);color:#171717;border-radius:12px;font-size:21px;
+}
+.wrap{width:min(1150px,100%);margin:auto;padding:22px 16px 50px}
+.login-wrap{max-width:430px;margin:8vh auto}
+.card{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:17px;padding:18px;min-width:0;
+}
+.login-card{padding:25px}
+h1{font-size:25px;margin:0 0 7px;letter-spacing:-.5px}
+h2{font-size:19px;margin:0 0 14px}
+h3{font-size:15px;margin:0 0 12px}
+p{margin:7px 0}
+.field{display:grid;gap:6px;margin:14px 0}
+.field label{color:var(--muted);font-size:12px}
+.btn{
+  border:1px solid var(--border);border-radius:11px;padding:11px 14px;
+  color:var(--text);background:#24324c;font-weight:650;
+}
+.btn.primary{background:var(--yellow);border-color:var(--yellow);color:#171717}
+.btn.danger{background:#3a202d;border-color:#633344;color:#ffb5bf}
+.btn.success{background:#17382e;border-color:#28654d;color:#a5f4ce}
+.btn.ghost{background:transparent}
+.btn.full{width:100%}
+.btn.small-btn{padding:7px 10px;font-size:12px}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px}
+.sidebar{align-self:start;position:sticky;top:78px}
+.nav{display:grid;gap:6px}
+.nav button{
+  width:100%;text-align:left;background:transparent;color:var(--muted);
+  border:1px solid transparent;padding:11px 12px;border-radius:10px;
+}
+.nav button.active{background:#27334b;border-color:#3a4967;color:var(--yellow)}
+.content{min-width:0}
+.hero{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:20px}
+.hero h1{margin-bottom:4px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px}
+.stat .num{font-size:24px;font-weight:800;margin-top:5px;overflow-wrap:anywhere}
+.stack{display:grid;gap:12px}
+.item{border:1px solid var(--border);background:#141d2d;border-radius:12px;padding:13px;min-width:0}
+.item-head{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.item-title{font-weight:700;overflow-wrap:anywhere}
+.badge{display:inline-block;border:1px solid var(--border);border-radius:30px;padding:3px 8px;font-size:11px;color:var(--muted)}
+.badge.good{color:var(--green);border-color:#28654d}
+.badge.warn{color:var(--yellow);border-color:#766326}
+.badge.bad{color:#ff9dac;border-color:#633344}
+.section{display:grid;gap:15px}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+.toolbar>*{flex:1}
+.toolbar .btn{flex:0 0 auto}
+.check-row{display:flex;align-items:center;gap:9px;margin:9px 0;color:var(--muted)}
+.check-row input{width:17px;height:17px;accent-color:var(--yellow)}
+.permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.permission{
+  display:flex;align-items:start;gap:8px;border:1px solid var(--border);
+  border-radius:10px;padding:10px;color:var(--text);overflow-wrap:anywhere;
+}
+.permission input{width:16px;height:16px;margin-top:3px;accent-color:var(--yellow)}
+.notice{padding:12px;border:1px solid var(--border);border-radius:11px;color:var(--muted);background:#141d2d}
+.error{color:#ff9dac}
+.success-text{color:var(--green)}
+hr{border:0;border-top:1px solid var(--border);margin:17px 0}
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translate(-50%,20px);
+  opacity:0;pointer-events:none;z-index:20;background:#27344c;
+  border:1px solid #465875;border-radius:12px;padding:12px 17px;
+  max-width:calc(100% - 28px);transition:.2s;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:25px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+@media(max-width:760px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:static}
+  .nav{display:flex;overflow:auto;padding-bottom:5px}
+  .nav button{white-space:nowrap;width:auto;flex-shrink:0}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wrap{padding:16px 12px 35px}
+  .card{padding:15px}
+  .login-card{padding:21px}
+  .hero{align-items:center}
+}
+@media(max-width:420px){
+  .grid{grid-template-columns:1fr}
+  .permission-grid{grid-template-columns:1fr}
+  h1{font-size:22px}
+  .topbar{padding:11px 12px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="logo">🐾</div><div>Чапи <span class="muted">/ панель</span></div></div>
+  <div class="btn-row" style="margin:0">
+    <span id="roleBadge" class="badge">Не авторизован</span>
+    <button id="logoutBtn" class="btn ghost small-btn hidden" onclick="logout()">Выйти</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="loginView" class="login-wrap">
+    <div class="card login-card">
+      <div style="font-size:36px;margin-bottom:12px">🔐</div>
+      <h1 id="loginTitle">Панель Чапи</h1>
+      <p class="muted" id="loginDescription">Войдите в систему управления ботом.</p>
+      <form id="loginForm">
+        <div class="field" id="usernameField">
+          <label for="username">Логин сотрудника</label>
+          <input id="username" autocomplete="username" placeholder="Ваш логин">
+        </div>
+        <div class="field">
+          <label for="password">Пароль</label>
+          <input id="password" type="password" autocomplete="current-password" required placeholder="Введите пароль">
+        </div>
+        <button class="btn primary full" type="submit" id="loginSubmit">Войти в панель</button>
+      </form>
+      <p id="loginError" class="error" role="alert"></p>
+      <hr>
+      <p class="muted small">Доступ предоставляется владельцем бота. Не передавайте пароль другим людям.</p>
+    </div>
+  </section>
+
+  <section id="appView" class="hidden">
+    <div class="hero">
+      <div>
+        <h1 id="welcomeTitle">Управление Чапи</h1>
+        <p class="muted" id="welcomeText">Настройки и инструменты бота</p>
+      </div>
+      <span class="badge good" id="connectionBadge">Подключено</span>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar card">
+        <nav class="nav" id="nav"></nav>
+      </aside>
+      <div class="content">
+        <div id="page" class="section"></div>
+      </div>
+    </div>
+  </section>
+  <div class="footer">Чапи · Панель управления</div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
 <script>
-const $=s=>document.querySelector(s);let activeTab='overview';
-const labels={antispam:'Антиспам',greetings:'Приветствия',notes:'Заметки',autoreplies:'Автоответы',count_messages:'Статистика сообщений',games:'Игры',economy:'Экономика',marriages:'Браки',clans:'Кланы'};
-const roleLabels={admin:'Глобальный администратор',agent:'Агент'};
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function notice(text,type=''){const n=$('#notice');n.textContent=text;n.className='msg'+(type?' '+type:'');n.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>n.classList.add('hidden'),5000)}
-async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});let data;try{data=await r.json()}catch{throw Error('Сервер вернул некорректный ответ ('+r.status+').')}if(!r.ok||data.ok===false){if(r.status===401){showLogin();}throw Error(data.error||'Ошибка запроса.')}return data}
-function showLogin(){ $('#loginView').classList.remove('hidden');$('#appView').classList.add('hidden');$('#logout').classList.add('hidden') }
-function showApp(){ $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');$('#logout').classList.remove('hidden');loadTab(activeTab) }
-function toggle(key,enabled,callback){return `<button class="toggle ${enabled?'on':''}" aria-label="${enabled?'Выключить':'Включить'}" data-toggle="${esc(key)}" data-enabled="${enabled}" onclick="${callback}"><span></span></button>`}
-function stat(label,value){return `<div class="stat"><div class="num">${Number(value||0).toLocaleString('ru-RU')}</div><div class="label">${esc(label)}</div></div>`}
-function empty(text){return `<div class="empty">${esc(text)}</div>`}
-function item(title,sub,right){return `<div class="item"><div class="details"><b>${esc(title)}</b><small>${esc(sub||'')}</small></div><div class="actions">${right||''}</div></div>`}
-async function loadTab(tab){activeTab=tab;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));const c=$('#content');c.innerHTML='<div class="empty">Загрузка…</div>';try{if(tab==='overview'){const d=await api('/api/panel/summary');c.innerHTML=`<div><h2>Обзор бота</h2><p class="muted">Сводка по данным текущей базы.</p></div><div class="grid">${stat('Пользователи',d.stats.users)}${stat('Группы',d.stats.groups)}${stat('Кланы',d.stats.clans)}${stat('Активные наказания',d.stats.active_punishments)}${stat('Заметки',d.stats.notes)}${stat('Автоответы',d.stats.autoreplies)}${stat('Глобальный спам-блок',d.stats.spamblocked)}</div><div class="card"><h3>Быстрые действия</h3><p class="muted">Настройки групп, глобальные модули, штат и спам-блок доступны во вкладках выше.</p><button onclick="loadTab('groups')">Открыть группы</button></div>`}
-else if(tab==='groups'){const d=await api('/api/panel/groups');c.innerHTML=`<div><h2>Настройки групп</h2><p class="muted">Переключатели сохраняются в той же SQLite-базе, что использует бот.</p></div>`+(d.groups.length?d.groups.map(g=>`<div class="card"><h3>Группа ${esc(g.chat_id)}</h3><div class="list" style="margin-top:10px">${Object.entries(g.settings).map(([k,v])=>item(labels[k]||k,v?'Включено':'Выключено',toggleHtml(k,v,`groupToggle('${g.chat_id}','${k}',${!v})`))).join('')}</div></div>`).join(''):empty('Пока нет зарегистрированных групп. Добавьте бота в группу и дождитесь первого сообщения.'))}
-else if(tab==='modules'){const d=await api('/api/panel/modules');c.innerHTML=`<div><h2>Глобальные модули</h2><p class="muted">Эти переключатели влияют на весь бот, если соответствующий обработчик использует глобальный реестр модулей.</p></div><div class="card list">${Object.entries(d.modules).map(([k,v])=>item(d.labels[k]||k,v?'Включён':'Выключен',toggleHtml(k,v,`moduleToggle('${k}',${!v})`))).join('')}</div>`}
-else if(tab==='staff'){const d=await api('/api/panel/staff');c.innerHTML=`<div><h2>Управление штатом</h2><p class="muted">Владелец задан переменной OWNER_TELEGRAM_ID и не отображается как обычная запись.</p></div><form id="staffForm" class="card stack"><div class="formgrid"><input name="user_id" inputmode="numeric" placeholder="Telegram ID пользователя" required pattern="[0-9]+"><select name="role"><option value="agent">Агент</option><option value="admin">Глобальный администратор</option></select></div><div class="row"><button type="submit">Назначить роль</button><button type="button" class="secondary" onclick="staffRemovePrompt()">Снять роль по ID</button></div></form><div class="card"><h3>Текущий штат</h3><div class="list" style="margin-top:10px">${d.staff.length?d.staff.map(s=>item(roleLabels[s.role]||s.role,`ID ${s.user_id} · назначил ${s.granted_by||'—'}`,`<button class="danger" onclick="staffRemove(${s.user_id},'${s.role}')">Снять</button>`)).join(''):empty('Глобальный штат пока пуст.')}</div></div>`;$('#staffForm').addEventListener('submit',staffAdd)}
-else if(tab==='spam'){const d=await api('/api/panel/spamblocks');c.innerHTML=`<div><h2>Глобальный спам-блок</h2><p class="muted">Блокировка ограничивает взаимодействие с ботом, но не является баном участника в Telegram-группе.</p></div><form id="spamForm" class="card stack"><input name="user_id" inputmode="numeric" pattern="[0-9]+" placeholder="Telegram ID" required><input name="reason" maxlength="300" placeholder="Причина блокировки" required><button type="submit">Добавить в спам-блок</button></form><div class="card"><h3>Заблокированные пользователи</h3><div class="list" style="margin-top:10px">${d.items.length?d.items.map(s=>item(`ID ${s.user_id}`,`${s.reason||'Причина не указана'} · ${s.source||'—'} · ${s.created_at?new Date(s.created_at*1000).toLocaleString('ru-RU'):'дата неизвестна'}`,`<button class="danger" onclick="spamRemove(${s.user_id})">Разблокировать</button>`)).join(''):empty('Глобальный спам-блок пуст.')}</div></div>`;$('#spamForm').addEventListener('submit',spamAdd)}
-else if(tab==='logs'){const d=await api('/api/panel/logs?limit=50');c.innerHTML=`<div><h2>Журнал штата</h2><p class="muted">Последние 50 действий глобального штата.</p></div><div class="card list">${d.logs.length?d.logs.map(l=>item(l.action||'Действие',`${l.created_at?new Date(l.created_at*1000).toLocaleString('ru-RU'):'—'} · исполнитель ${l.actor_id||'—'} · цель ${l.target_id||'—'} · ${l.result||''}`)).join(''):empty('Записей пока нет.')}</div>`}
-}catch(e){c.innerHTML=empty(e.message||'Не удалось загрузить данные.')}}
-function toggleHtml(key,v,call){return `<button class="toggle ${v?'on':''}" aria-label="Переключить" onclick="${call}"><span></span></button>`}
-async function groupToggle(chat_id,key,enabled){try{await api('/api/panel/group-setting',{method:'POST',body:JSON.stringify({chat_id:Number(chat_id),key,enabled})});notice('Настройка группы сохранена.','success');loadTab('groups')}catch(e){notice(e.message,'error')}}
-async function moduleToggle(key,enabled){try{await api('/api/panel/module-action',{method:'POST',body:JSON.stringify({key,enabled})});notice('Глобальный модуль обновлён.','success');loadTab('modules')}catch(e){notice(e.message,'error')}}
-async function staffAdd(e){e.preventDefault();const f=new FormData(e.target);try{const d=await api('/api/panel/staff-action',{method:'POST',body:JSON.stringify({user_id:f.get('user_id'),role:f.get('role'),action:'add'})});notice(d.message||'Роль назначена.','success');loadTab('staff')}catch(e){notice(e.message,'error')}}
-async function staffRemove(id,role){if(!confirm(`Снять роль «${roleLabels[role]||role}» с пользователя ${id}?`))return;try{const d=await api('/api/panel/staff-action',{method:'POST',body:JSON.stringify({user_id:id,role,action:'remove'})});notice(d.message||'Роль снята.','success');loadTab('staff')}catch(e){notice(e.message,'error')}}
-function staffRemovePrompt(){const id=prompt('Введите Telegram ID пользователя для снятия роли:');if(!id)return;if(!/^\d+$/.test(id)){notice('ID должен содержать только цифры.','error');return}const role=prompt('Введите роль: admin или agent','agent');if(!['admin','agent'].includes(role)){notice('Роль должна быть admin или agent.','error');return}staffRemove(Number(id),role)}
-async function spamAdd(e){e.preventDefault();const f=new FormData(e.target);try{const d=await api('/api/panel/spamblock-action',{method:'POST',body:JSON.stringify({user_id:f.get('user_id'),reason:f.get('reason'),action:'add'})});notice(d.message||'Пользователь заблокирован.','success');loadTab('spam')}catch(e){notice(e.message,'error')}}
-async function spamRemove(id){if(!confirm(`Убрать пользователя ${id} из глобального спам-блока?`))return;try{const d=await api('/api/panel/spamblock-action',{method:'POST',body:JSON.stringify({user_id:id,action:'remove'})});notice(d.message||'Блокировка снята.','success');loadTab('spam')}catch(e){notice(e.message,'error')}}
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/panel/login',{method:'POST',body:JSON.stringify({password:$('#password').value})});$('#password').value='';showApp()}catch(e){notice(e.message,'error')}});
-$('#logout').addEventListener('click',async()=>{try{await api('/api/panel/logout',{method:'POST',body:'{}'})}finally{showLogin();notice('Вы вышли из панели.')}});
-$('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)loadTab(b.dataset.tab)});
-(async()=>{try{const s=await api('/api/panel/session');if(s.authenticated)showApp();else showLogin();if(!s.configured)notice('Панель пока не настроена: добавьте PANEL_PASSWORD и PANEL_SESSION_SECRET в Environment на хостинге.','error')}catch{showLogin()}})();
-</script></body></html>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const path = location.pathname.replace(/\/+$/, "") || "/";
+const isOwnerPath = path === "/owner" || path === "/panel" || path === "/";
+const pathRole = path === "/admin" ? "admin" : path === "/agent" ? "agent" : "owner";
+
+let currentRole = pathRole;
+let currentUser = null;
+let currentPermissions = [];
+let currentGroupAccess = [];
+let currentAccounts = [];
+let currentGroups = [];
+let currentPage = "overview";
+let toastTimer;
+
+const permissionLabels = {
+  "spamblock.view":"Просмотр спам-блокировок",
+  "spamblock.add":"Добавление в спам-блок",
+  "spamblock.remove":"Удаление из спам-блока",
+  "economy.balance":"Управление балансом",
+  "economy.gifts":"Выдача подарков и предметов",
+  "birthdays.manage":"Управление днями рождения",
+  "cases.view":"Просмотр жалоб",
+  "cases.manage":"Обработка жалоб",
+  "moderation.view":"Просмотр модерации",
+  "moderation.manage":"Управление модерацией",
+  "groups.view":"Просмотр групп",
+  "groups.settings":"Изменение настроек групп",
+  "staff.view":"Просмотр сотрудников",
+  "logs.view":"Просмотр журналов",
+  "log.view":"Просмотр журнала сотрудников",
+  "staff.agents":"Управление агентами"
+};
+
+const ownerNav = [
+  ["overview","🏠","Обзор"],
+  ["accounts","👤","Сотрудники"],
+  ["groups","👥","Группы"],
+  ["spamblocks","🚫","Спам-блокировки"],
+  ["staff","🛡️","Глобальные роли"],
+  ["modules","🧩","Модули"],
+  ["logs","📋","Журналы"]
+];
+
+const employeeNav = [
+  ["overview","🏠","Мой доступ"],
+  ["spamblocks","🚫","Спам-блокировки"],
+  ["groups","👥","Мои группы"]
+];
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[ch]));
+}
+function toast(message) {
+  $("toast").textContent = message;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2800);
+}
+function showError(message) {
+  $("loginError").textContent = message;
+}
+function safeArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && Array.isArray(value.items)) return value.items;
+  if (value && Array.isArray(value.accounts)) return value.accounts;
+  if (value && Array.isArray(value.groups)) return value.groups;
+  if (value && Array.isArray(value.staff)) return value.staff;
+  if (value && Array.isArray(value.logs)) return value.logs;
+  if (value && Array.isArray(value.blocks)) return value.blocks;
+  return [];
+}
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    credentials:"same-origin",
+    ...options,
+    headers:{
+      ...(options.body ? {"Content-Type":"application/json"} : {}),
+      ...(options.headers || {})
+    }
+  });
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; }
+  catch { data = {message:raw}; }
+
+  if (!response.ok || data.ok === false || data.success === false) {
+    throw new Error(data.error || data.message || `Ошибка запроса (${response.status})`);
+  }
+  return data;
+}
+async function post(url, payload = {}) {
+  return api(url, {method:"POST", body:JSON.stringify(payload)});
+}
+function payloadArray(data, key) {
+  return Array.isArray(data) ? data : safeArray(data[key] ? {[key]:data[key]} : data);
+}
+function isOwner() { return currentRole === "owner"; }
+function hasPermission(key) {
+  return isOwner() || currentPermissions.some(p =>
+    (typeof p === "string" ? p : p.permission_key || p.permission) === key
+  );
+}
+function canSeeSpamblocks() {
+  return isOwner() || hasPermission("spamblock.view");
+}
+function canManageSpamblocks() {
+  return isOwner() || hasPermission("spamblock.add") || hasPermission("spamblock.remove");
+}
+
+$("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  showError("");
+  $("loginSubmit").disabled = true;
+  try {
+    const password = $("password").value;
+    if (isOwnerPath) {
+      await post("/api/panel/login", {password});
+      currentRole = "owner";
+    } else {
+      const username = $("username").value.trim();
+      await post("/api/staff/login", {username,password});
+      currentRole = pathRole;
+    }
+    $("password").value = "";
+    await bootstrap();
+  } catch (error) {
+    showError(error.message || "Не удалось войти.");
+  } finally {
+    $("loginSubmit").disabled = false;
+  }
+});
+
+async function logout() {
+  try {
+    if (isOwner()) await post("/api/panel/logout");
+    else await post("/api/staff/logout");
+  } catch {}
+  currentUser = null;
+  currentPermissions = [];
+  currentGroupAccess = [];
+  $("appView").classList.add("hidden");
+  $("loginView").classList.remove("hidden");
+  $("logoutBtn").classList.add("hidden");
+  $("roleBadge").textContent = "Не авторизован";
+  $("password").value = "";
+  toast("Вы вышли из панели");
+}
+function configureLogin() {
+  $("usernameField").classList.toggle("hidden", isOwnerPath);
+  $("loginTitle").textContent = isOwnerPath ? "Панель владельца" :
+    pathRole === "admin" ? "Панель администратора" : "Панель агента";
+  $("loginDescription").textContent = isOwnerPath ?
+    "Вход владельца для полного управления ботом." :
+    "Введите выданные владельцем логин и пароль.";
+}
+configureLogin();
+
+async function bootstrap() {
+  if (isOwner()) {
+    const session = await api("/api/panel/session");
+    if (session.authenticated === false) throw new Error("Сессия владельца не подтверждена.");
+    currentUser = session;
+    currentRole = "owner";
+  } else {
+    const session = await api("/api/staff/session");
+    if (session.authenticated === false) throw new Error("Сессия сотрудника не подтверждена.");
+    currentUser = session.account || session.user || session;
+    if (currentUser.role) currentRole = currentUser.role;
+    const access = await api("/api/staff/me/permissions");
+    currentPermissions = safeArray(access.permissions || access.items || access);
+    currentGroupAccess = safeArray(access.group_access || access.groups || []);
+  }
+
+  $("loginView").classList.add("hidden");
+  $("appView").classList.remove("hidden");
+  $("logoutBtn").classList.remove("hidden");
+  $("roleBadge").textContent = isOwner() ? "👑 Владелец" :
+    currentRole === "admin" ? "🛡️ Администратор" : "🧰 Агент";
+  $("welcomeTitle").textContent = isOwner() ? "Управление Чапи" : "Мой кабинет";
+  $("welcomeText").textContent = isOwner() ?
+    "Полный доступ к доступным инструментам панели." :
+    `Роль: ${currentRole}. Доступны только выданные разрешения.`;
+
+  buildNav();
+  await showPage("overview");
+}
+async function checkSession() {
+  try {
+    if (isOwnerPath) {
+      const session = await api("/api/panel/session");
+      if (session.authenticated) {
+        currentRole = "owner";
+        await bootstrap();
+      }
+    } else {
+      const session = await api("/api/staff/session");
+      if (session.authenticated) {
+        currentUser = session.account || session.user || session;
+        currentRole = currentUser.role || pathRole;
+        const access = await api("/api/staff/me/permissions");
+        currentPermissions = safeArray(access.permissions || access.items || access);
+        currentGroupAccess = safeArray(access.group_access || access.groups || []);
+        await bootstrap();
+      }
+    }
+  } catch {
+    // Если сессии нет или API ещё не подключён, показываем форму входа.
+  }
+}
+function buildNav() {
+  const items = isOwner() ? ownerNav : employeeNav;
+  $("nav").innerHTML = items.map(([id,icon,label]) =>
+    `<button data-page="${id}" class="${id===currentPage?"active":""}" type="button">${icon} ${label}</button>`
+  ).join("");
+  $("nav").querySelectorAll("button").forEach(button => {
+    button.addEventListener("click", () => showPage(button.dataset.page));
+  });
+}
+async function showPage(name) {
+  currentPage = name;
+  buildNav();
+  const page = $("page");
+  page.innerHTML = `<div class="card"><p class="muted">Загрузка…</p></div>`;
+  try {
+    if (name === "overview") await renderOverview(page);
+    else if (name === "accounts" && isOwner()) await renderAccounts(page);
+    else if (name === "groups") await renderGroups(page);
+    else if (name === "spamblocks") await renderSpamblocks(page);
+    else if (name === "staff" && isOwner()) await renderStaff(page);
+    else if (name === "modules" && isOwner()) await renderModules(page);
+    else if (name === "logs" && isOwner()) await renderLogs(page);
+    else page.innerHTML = `<div class="card">Нет доступа к этому разделу.</div>`;
+  } catch (error) {
+    page.innerHTML = `<div class="card"><h2>Не удалось загрузить раздел</h2><p class="error">${escapeHtml(error.message)}</p><p class="muted small">Проверьте API и права доступа. Если маршрут ещё не реализован в web_panel.py, его нужно добавить на сервере.</p><button class="btn" onclick="showPage('${escapeHtml(name)}')">Повторить</button></div>`;
+  }
+}
+function statCard(label, value, icon) {
+  return `<div class="stat"><div class="muted">${icon} ${escapeHtml(label)}</div><div class="num">${escapeHtml(value ?? "—")}</div></div>`;
+}
+async function renderOverview(page) {
+  if (!isOwner()) {
+    page.innerHTML = `
+      <div class="card"><h2>🔐 Мои разрешения</h2>
+      <p class="muted">Список разрешений, назначенных владельцем.</p>
+      <div class="stack">${currentPermissions.length ? currentPermissions.map(p=>{
+        const key = typeof p==="string" ? p : p.permission_key || p.permission || "";
+        return `<div class="item"><span class="badge good">Разрешено</span><p>${escapeHtml(permissionLabels[key] || key)}</p><span class="muted small">${escapeHtml(key)}</span></div>`;
+      }).join("") : `<div class="notice">Пока нет назначенных разрешений.</div>`}</div>
+      <hr><h3>Доступ к группам</h3>
+      <div class="stack">${currentGroupAccess.length ? currentGroupAccess.map(g=>`<div class="item"><b>Группа ${escapeHtml(g.chat_id ?? g.group_id ?? "—")}</b><p class="muted">Уровень: ${escapeHtml(g.access_level ?? g.level ?? "—")}</p></div>`).join("") : `<p class="muted">Доступ к группам не указан.</p>`}</div>
+      </div>
+      <div class="card"><h2>🛡️ Безопасность</h2><p class="muted">Наличие кнопки в интерфейсе не заменяет серверную проверку прав. Все действия должны проверяться ботом.</p></div>`;
+    return;
+  }
+  const data = await api("/api/panel/summary");
+  const summary = data.summary || data;
+  page.innerHTML = `
+    <div class="stats">
+      ${statCard("Пользователи",summary.users,"👤")}
+      ${statCard("Группы",summary.groups,"👥")}
+      ${statCard("Кланы",summary.clans,"🏰")}
+      ${statCard("Наказания",summary.punishments ?? summary.active_punishments,"🛡️")}
+    </div>
+    <div class="card"><h2>👑 Панель владельца</h2>
+    <p class="muted">Здесь можно управлять сотрудниками, разрешениями, группами и инструментами панели.</p>
+    <div class="grid">
+      <div class="item"><h3>👤 Сотрудники</h3><p class="muted">Аккаунты, пароли, роли и разрешения.</p><button class="btn primary" onclick="showPage('accounts')">Открыть</button></div>
+      <div class="item"><h3>👥 Группы</h3><p class="muted">Доступ и настройки групп.</p><button class="btn" onclick="showPage('groups')">Открыть</button></div>
+      <div class="item"><h3>🚫 Спам-блокировки</h3><p class="muted">Просмотр и управление блокировками.</p><button class="btn" onclick="showPage('spamblocks')">Открыть</button></div>
+      <div class="item"><h3>📋 Журналы</h3><p class="muted">История действий панели.</p><button class="btn" onclick="showPage('logs')">Открыть</button></div>
+    </div></div>`;
+}
+async function renderAccounts(page) {
+  const data = await api("/api/owner/accounts");
+  currentAccounts = safeArray(data.accounts || data);
+  page.innerHTML = `
+    <div class="card"><h2>➕ Создать аккаунт сотрудника</h2>
+      <p class="muted">Укажите Telegram ID сотрудника, уникальный логин, пароль и роль.</p>
+      <form id="createAccount" class="grid">
+        <div class="field"><label for="newId">Telegram ID</label><input id="newId" inputmode="numeric" required placeholder="Например, 123456789"></div>
+        <div class="field"><label for="newUsername">Логин</label><input id="newUsername" required minlength="3" maxlength="50" autocomplete="off" placeholder="employee01"></div>
+        <div class="field"><label for="newPassword">Пароль (минимум 12 символов)</label><input id="newPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+        <div class="field"><label for="newRole">Роль</label><select id="newRole"><option value="agent">Агент</option><option value="admin">Администратор</option></select></div>
+        <div class="field" style="grid-column:1/-1"><button class="btn primary" type="submit">Создать аккаунт</button></div>
+      </form>
+    </div>
+    <div class="card"><h2>👥 Аккаунты сотрудников (${currentAccounts.length})</h2>
+      <div class="stack" id="accountList">${currentAccounts.length ? currentAccounts.map(accountCard).join("") : `<div class="notice">Аккаунтов пока нет.</div>`}</div>
+    </div>`;
+  $("createAccount").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const user_id = Number($("newId").value);
+    if (!Number.isSafeInteger(user_id) || user_id <= 0) return toast("Проверьте Telegram ID");
+    try {
+      await post("/api/owner/accounts",{
+        user_id, username:$("newUsername").value.trim(),
+        password:$("newPassword").value, role:$("newRole").value
+      });
+      toast("Аккаунт создан");
+      await renderAccounts(page);
+    } catch(err) { toast(err.message); }
+  });
+  page.querySelectorAll("[data-account-action]").forEach(button=>{
+    button.addEventListener("click", async()=>{
+      const id = Number(button.dataset.id);
+      const action = button.dataset.accountAction;
+      try {
+        if (action === "toggle") {
+          await post("/api/owner/accounts/update",{user_id:id,active:button.dataset.active!=="true"});
+        } else if (action === "password") {
+          const password = prompt("Введите новый пароль (минимум 12 символов):");
+          if (password === null) return;
+          if (password.length < 12) return toast("Пароль слишком короткий");
+          await post("/api/owner/accounts/update",{user_id:id,password});
+        } else if (action === "role") {
+          const role = prompt("Введите роль: admin или agent",button.dataset.role);
+          if (role !== "admin" && role !== "agent") return toast("Укажите admin или agent");
+          await post("/api/owner/accounts/update",{user_id:id,role});
+        } else if (action === "permissions") {
+          await renderAccountPermissions(id);
+          return;
+        } else if (action === "groups") {
+          await renderAccountGroups(id);
+          return;
+        }
+        toast("Изменения сохранены");
+        await renderAccounts(page);
+      } catch(err) { toast(err.message); }
+    });
+  });
+}
+function accountCard(a) {
+  const id = Number(a.user_id ?? a.id);
+  const role = a.role || "agent";
+  const active = a.active === true || a.active === 1;
+  return `<div class="item">
+    <div class="item-head"><div><div class="item-title">${escapeHtml(a.username || "Без логина")}</div><div class="muted small">ID: ${escapeHtml(id)}</div></div><span class="badge ${active?"good":"bad"}">${active?"Активен":"Отключён"}</span></div>
+    <p class="muted">Роль: ${role==="admin"?"Администратор":"Агент"}</p>
+    <div class="btn-row">
+      <button class="btn small-btn" data-account-action="permissions" data-id="${id}">Разрешения</button>
+      <button class="btn small-btn" data-account-action="groups" data-id="${id}">Доступ к группам</button>
+      <button class="btn small-btn" data-account-action="password" data-id="${id}">Сменить пароль</button>
+      <button class="btn small-btn" data-account-action="role" data-id="${id}" data-role="${escapeHtml(role)}">Сменить роль</button>
+      <button class="btn small-btn ${active?"danger":"success"}" data-account-action="toggle" data-id="${id}" data-active="${active}">${active?"Отключить":"Включить"}</button>
+    </div>
+  </div>`;
+}
+async function renderAccountPermissions(userId) {
+  const account = currentAccounts.find(a=>Number(a.user_id ?? a.id)===userId);
+  if (!account) return toast("Аккаунт не найден");
+  const data = await api("/api/owner/accounts");
+  const all = safeArray(data.accounts || data);
+  const fresh = all.find(a=>Number(a.user_id ?? a.id)===userId) || account;
+  const granted = new Set((fresh.permissions || []).map(p=>typeof p==="string"?p:p.permission_key || p.permission));
+  const scope = prompt("Область разрешений: global или group:-1001234567890","global");
+  if (scope === null) return;
+  if (scope !== "global" && !/^group:-\d+$/.test(scope)) return toast("Неверная область");
+  const page = $("page");
+  page.innerHTML = `<div class="card"><h2>🔑 Разрешения: ${escapeHtml(fresh.username)}</h2>
+    <p class="muted">Выберите разрешения и нажмите «Сохранить». Область: ${escapeHtml(scope)}.</p>
+    <form id="permissionForm"><div class="permission-grid">${Object.entries(permissionLabels).map(([key,label])=>`
+      <label class="permission"><input type="checkbox" name="permission" value="${escapeHtml(key)}" ${granted.has(key)?"checked":""}><span>${escapeHtml(label)}<br><span class="muted small">${escapeHtml(key)}</span></span></label>
+    `).join("")}</div>
+    <div class="btn-row"><button class="btn primary" type="submit">Сохранить разрешения</button><button class="btn" type="button" id="backAccounts">Назад</button></div></form></div>`;
+  $("backAccounts").onclick=()=>renderAccounts(page);
+  $("permissionForm").onsubmit=async e=>{
+    e.preventDefault();
+    try {
+      const selected = new Set([...e.target.querySelectorAll("input:checked")].map(x=>x.value));
+      for (const permission of Object.keys(permissionLabels)) {
+        await post("/api/owner/accounts/permissions",{
+          user_id:userId,permission,scope,
+          action:selected.has(permission)?"grant":"revoke"
+        });
+      }
+      toast("Разрешения сохранены");
+      await renderAccounts(page);
+    } catch(err) { toast("Ошибка сохранения: "+err.message); }
+  };
+}
+async function renderAccountGroups(userId) {
+  const page = $("page");
+  const data = await api("/api/panel/groups");
+  currentGroups = safeArray(data.groups || data);
+  const account = currentAccounts.find(a=>Number(a.user_id ?? a.id)===userId);
+  page.innerHTML = `<div class="card"><h2>👥 Доступ к группам</h2><p class="muted">Сотрудник: ${escapeHtml(account?.username || userId)}</p>
+    <div class="field"><label for="groupId">ID группы</label><select id="groupId">${currentGroups.map(g=>`<option value="${escapeHtml(g.chat_id ?? g.id)}">${escapeHtml(g.title || g.name || g.chat_id || g.id)}</option>`).join("")}<option value="custom">Ввести ID вручную</option></select></div>
+    <div class="field"><label for="customGroup">ID группы вручную, если нужно</label><input id="customGroup" placeholder="-1001234567890"></div>
+    <div class="field"><label for="groupLevel">Уровень доступа</label><select id="groupLevel"><option value="none">Нет доступа</option><option value="view">Просмотр</option><option value="manage">Управление</option></select></div>
+    <div class="btn-row"><button class="btn primary" id="saveGroupAccess">Сохранить</button><button class="btn" id="backAccounts">Назад</button></div>
+    <p class="muted small">Настройка будет действовать только для серверных маршрутов, которые проверяют доступ к группе.</p></div>`;
+  $("backAccounts").onclick=()=>renderAccounts(page);
+  $("saveGroupAccess").onclick=async()=>{
+    const selected=$("groupId").value;
+    const raw=selected==="custom"?$("customGroup").value.trim():selected;
+    const chat_id=Number(raw);
+    if (!Number.isSafeInteger(chat_id) || chat_id>=0) return toast("ID группы должен быть отрицательным числом");
+    try {
+      await post("/api/owner/accounts/group-access",{user_id:userId,chat_id,level:$("groupLevel").value});
+      toast("Доступ к группе сохранён");
+    } catch(err) { toast(err.message); }
+  };
+}
+async function renderGroups(page) {
+  const endpoint = isOwner()?"/api/panel/groups":"/api/staff/me/permissions";
+  const data = await api(endpoint);
+  const groups = isOwner()?safeArray(data.groups || data):currentGroupAccess;
+  currentGroups = groups;
+  page.innerHTML = `<div class="card"><h2>👥 ${isOwner()?"Группы бота":"Мои группы"}</h2>
+    <p class="muted">${isOwner()?"Группы, обнаруженные в настройках базы данных.":"Группы, доступ к которым назначен владельцем."}</p>
+    <div class="stack">${groups.length ? groups.map(g=>{
+      const id=g.chat_id ?? g.group_id ?? g.id ?? "—";
+      const title=g.title || g.name || `Группа ${id}`;
+      const settings=g.settings || g.data || {};
+      return `<div class="item"><div class="item-head"><div class="item-title">${escapeHtml(title)}</div><span class="badge">${escapeHtml(g.access_level || g.level || "Группа")}</span></div>
+      <p class="muted small">ID: ${escapeHtml(id)}</p>
+      ${isOwner()?`<details><summary>Настройки группы</summary><div class="stack" style="margin-top:12px">
+        ${Object.entries(settings).map(([key,value])=>`<div class="item"><div class="item-title">${escapeHtml(key)}</div><div class="muted small">${escapeHtml(typeof value==="object"?JSON.stringify(value):value)}</div></div>`).join("") || `<p class="muted">Детальные настройки недоступны в ответе API.</p>`}
+      </div></details>`:""}
+      </div>`;
+    }).join(""):`<div class="notice">Группы не найдены или API не вернул список.</div>`}</div>
+    <button class="btn" id="refreshGroups">Обновить</button></div>`;
+  $("refreshGroups").onclick=()=>renderGroups(page);
+}
+async function renderSpamblocks(page) {
+  if (!canSeeSpamblocks()) {
+    page.innerHTML = `<div class="card"><h2>🚫 Спам-блокировки</h2><p class="muted">У вас нет разрешения на просмотр спам-блокировок.</p></div>`;
+    return;
+  }
+  const data = await api(isOwner()?"/api/panel/spamblocks":"/api/staff/spamblocks");
+  const blocks = safeArray(data.blocks || data);
+  page.innerHTML = `<div class="card"><h2>🚫 Спам-блокировки</h2>
+    ${canManageSpamblocks()?`<form id="spamForm" class="grid">
+      <div class="field"><label for="spamUser">Telegram ID пользователя</label><input id="spamUser" inputmode="numeric" required placeholder="123456789"></div>
+      <div class="field"><label for="spamReason">Причина</label><input id="spamReason" placeholder="Спам"></div>
+      <div class="field" style="grid-column:1/-1"><button class="btn primary" type="submit">Добавить в спам-блок</button></div>
+    </form>`:""}
+    <hr><div class="stack">${blocks.length?blocks.map(b=>{
+      const id=b.user_id ?? b.id;
+      return `<div class="item"><div class="item-head"><b>ID: ${escapeHtml(id)}</b><span class="badge bad">Блокировка</span></div>
+      <p class="muted">${escapeHtml(b.reason || b.details || "Причина не указана")}</p>
+      ${isOwner()||hasPermission("spamblock.remove")?`<button class="btn danger small-btn" data-remove-spam="${escapeHtml(id)}">Удалить из спам-блока</button>`:""}</div>`;
+    }).join(""):`<div class="notice">Записей нет или API не вернул список.</div>`}</div></div>`;
+  if ($("spamForm")) $("spamForm").onsubmit=async e=>{
+    e.preventDefault();
+    const user_id=Number($("spamUser").value);
+    if (!Number.isSafeInteger(user_id)||user_id<=0) return toast("Проверьте Telegram ID");
+    try {
+      await post(isOwner()?"/api/panel/spamblock-action":"/api/staff/spamblock-action",{
+        action:"add",user_id,reason:$("spamReason").value.trim()
+      });
+      toast("Запрос выполнен");
+      await renderSpamblocks(page);
+    } catch(err) { toast(err.message); }
+  };
+  page.querySelectorAll("[data-remove-spam]").forEach(button=>{
+    button.onclick=async()=>{
+      if (!confirm("Удалить пользователя из спам-блока?")) return;
+      try {
+        await post(isOwner()?"/api/panel/spamblock-action":"/api/staff/spamblock-action",{
+          action:"remove",user_id:Number(button.dataset.removeSpam)
+        });
+        toast("Запрос выполнен");
+        await renderSpamblocks(page);
+      } catch(err) { toast(err.message); }
+    };
+  });
+}
+async function renderStaff(page) {
+  const data=await api("/api/panel/staff");
+  const staff=safeArray(data.staff || data);
+  page.innerHTML=`<div class="card"><h2>🛡️ Глобальные роли</h2>
+  <p class="muted">Этот список может отличаться от аккаунтов входа в веб-панель.</p>
+  <div class="stack">${staff.length?staff.map(s=>`<div class="item"><div class="item-title">${escapeHtml(s.username || s.user_id || s.id)}</div><p class="muted small">Роль: ${escapeHtml(s.role || "—")}</p></div>`).join(""):`<div class="notice">Список пуст.</div>`}</div></div>`;
+}
+async function renderModules(page) {
+  const data=await api("/api/panel/modules");
+  const modules=safeArray(data.modules || data);
+  page.innerHTML=`<div class="card"><h2>🧩 Модули бота</h2><p class="muted">Включение или отключение модулей.</p>
+  <div class="stack">${modules.length?modules.map(m=>{
+    const key=m.key || m.module || m.name;
+    const enabled=m.enabled===true||m.enabled===1;
+    return `<div class="item"><div class="item-head"><div><b>${escapeHtml(m.title || m.name || key)}</b><div class="muted small">${escapeHtml(key)}</div></div><span class="badge ${enabled?"good":"warn"}">${enabled?"Включён":"Отключён"}</span></div>
+    <button class="btn small-btn" data-module="${escapeHtml(key)}" data-enabled="${enabled}">${enabled?"Отключить":"Включить"}</button></div>`;
+  }).join(""):`<div class="notice">Модули не найдены.</div>`}</div></div>`;
+  page.querySelectorAll("[data-module]").forEach(button=>{
+    button.onclick=async()=>{
+      try{
+        await post("/api/panel/module-action",{module:button.dataset.module,enabled:button.dataset.enabled!=="true",action:button.dataset.enabled==="true"?"disable":"enable"});
+        toast("Запрос выполнен");
+        await renderModules(page);
+      }catch(err){toast(err.message)}
+    };
+  });
+}
+async function renderLogs(page) {
+  const data=await api("/api/panel/logs");
+  const logs=safeArray(data.logs || data);
+  page.innerHTML=`<div class="card"><h2>📋 Журнал действий</h2><p class="muted">Последние доступные записи.</p>
+  <div class="stack">${logs.length?logs.map(log=>`<div class="item"><div class="item-head"><b>${escapeHtml(log.action || log.event || "Действие")}</b><span class="muted small">${escapeHtml(log.created_at || log.timestamp || "")}</span></div>
+  <p>${escapeHtml(log.details || log.note || log.message || "")}</p>
+  <p class="muted small">Пользователь: ${escapeHtml(log.actor_id || log.user_id || "—")} · Группа: ${escapeHtml(log.chat_id || "—")}</p></div>`).join(""):`<div class="notice">Записей нет или API не вернул список.</div>`}</div></div>`;
+}
+
+checkSession();
+</script>
+</body>
+</html>
