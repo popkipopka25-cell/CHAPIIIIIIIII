@@ -1,0 +1,20 @@
+name: Chapi Tests
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачать код
+        uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Проверить синтаксис Python
+        run: python -m compileall -q .
