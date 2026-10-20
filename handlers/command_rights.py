@@ -255,7 +255,14 @@ async def command_rank_settings(message: Message):
     if message.from_user is None:
         return
 
-    creator_id = _creator_id()
+    
+def _creator_id() -> int:
+    """Получает ID создателя бота из config.py."""
+    try:
+        return int(config.OWNER_TELEGRAM_ID or 0)
+    except (AttributeError, TypeError, ValueError):
+        return 0
+
 
     # Только владелец ID из config.OWNER_TELEGRAM_ID.
     if creator_id <= 0 or message.from_user.id != creator_id:
