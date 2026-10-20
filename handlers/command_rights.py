@@ -140,11 +140,14 @@ async def ensure_table() -> None:
 
 
 def detect_command(text: str) -> int | None:
-    """Возвращает код команды, если сообщение начинается с её названия."""
+    """Возвращает код команды по началу сообщения."""
     first_line = (text or "").split("\n", 1)[0].strip().lower()
 
     for alias, code in ALIASES:
-        if re.match(r"^" + re.escape(alias) + r"(?:\s|$)", first_line):
+        if re.match(
+            r"^" + re.escape(alias) + r"(?:\s|$)",
+            first_line,
+        ):
             return code
 
     return None
@@ -157,7 +160,7 @@ async def get_rank(message: Message) -> int:
         return 0
 
     creator_id = _creator_id()
-    if creator_id > 0 and message.from_user.id == creator_id:
+    if creator_id > 0 and user.id == creator_id:
         return 5
 
     from handlers.moderation import effective_role
@@ -165,7 +168,7 @@ async def get_rank(message: Message) -> int:
     role = await effective_role(
         message.bot,
         message.chat.id,
-        message.from_user.id,
+        user.id,
     )
 
     return {
@@ -178,7 +181,7 @@ async def get_rank(message: Message) -> int:
 
 
 async def get_override(chat_id: int, code: int) -> int | None:
-    """Получает переопределённый ранг команды для группы."""
+    """Получает минимальный ранг команды для группы."""
     await ensure_table()
 
     conn = await db.get_db()
@@ -202,7 +205,7 @@ async def get_override(chat_id: int, code: int) -> int | None:
 
 
 class CommandRankMiddleware(BaseMiddleware):
-    """Применяет заданный минимальный ранг команды."""
+    """Проверяет установленный минимальный ранг команды."""
 
     async def __call__(self, handler, event, data):
         if not isinstance(event, Message) or not event.text:
@@ -255,16 +258,8 @@ async def command_rank_settings(message: Message):
     if message.from_user is None:
         return
 
-    
-def _creator_id() -> int:
-    """Получает ID создателя бота из config.py."""
-    try:
-        return int(config.OWNER_TELEGRAM_ID or 0)
-    except (AttributeError, TypeError, ValueError):
-        return 0
+    creator_id = _creator_id()
 
-
-    # Только владелец ID из config.OWNER_TELEGRAM_ID.
     if creator_id <= 0 or message.from_user.id != creator_id:
         await message.reply(
             "⛔ Настраивать .дк может только создатель бота."
@@ -287,6 +282,7 @@ def _creator_id() -> int:
             f"{code} — {', '.join(names)}"
             for code, names in sorted(COMMANDS.items())
         ]
+
         await message.reply(
             "📋 Коды команд Чапи\n\n"
             + "\n".join(lines)
@@ -324,7 +320,9 @@ def _creator_id() -> int:
         return
 
     if rank not in RANK_NAMES:
-        await message.reply("❌ Ранг должен быть числом от 0 до 5.")
+        await message.reply(
+            "❌ Ранг должен быть числом от 0 до 5."
+        )
         return
 
     try:
