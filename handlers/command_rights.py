@@ -23,13 +23,14 @@ RANK_NAMES = {
     5: "Создатель",
 }
 
-# Код команды: варианты написания на русском языке.
+# Код команды: поддерживаемые варианты названия.
 COMMANDS = {
     10: ("помощь",),
     11: ("мой id",),
     12: ("кто админ",),
     13: ("инфо группы",),
     14: ("профиль",),
+
     20: ("мут",),
     21: ("размут", "снять мут", "анмут"),
     22: ("варн",),
@@ -52,6 +53,7 @@ COMMANDS = {
     39: ("дело принять",),
     40: ("дело отклонить",),
     41: ("дело",),
+
     50: ("баланс",),
     51: ("бонус",),
     52: ("перевести",),
@@ -72,6 +74,7 @@ COMMANDS = {
     67: ("забрать",),
     68: ("товар добавить",),
     69: ("товар удалить",),
+
     70: ("брак",),
     71: ("принять брак",),
     72: ("отклонить брак",),
@@ -80,6 +83,7 @@ COMMANDS = {
     75: ("восстановить брак",),
     76: ("принять восстановление брака",),
     77: ("отклонить восстановление брака",),
+
     80: ("создать клан",),
     81: ("мой клан",),
     82: ("клан участники",),
@@ -87,9 +91,11 @@ COMMANDS = {
     84: ("моя заявка в клан",),
     85: ("отменить заявку в клан",),
     86: ("клан выйти",),
+
     90: ("монетка", "орёл или решка"),
     91: ("кости", "кубик"),
     92: ("случайное число",),
+
     100: ("заметка создать",),
     101: ("заметка",),
     102: ("заметка удалить",),
@@ -97,45 +103,46 @@ COMMANDS = {
     104: ("автоответ добавить",),
     105: ("автоответ удалить",),
     106: ("автоответы",),
+
     110: ("настройки",),
     111: ("настройка",),
     112: ("приветствие текст",),
     113: ("спам",),
 }
 
+# Сначала проверяем наиболее длинные названия,
+# чтобы, например, «снять все варны» не совпало с «снять варн».
 ALIASES = sorted(
-    [
+    (
         (alias, code)
         for code, names in COMMANDS.items()
         for alias in names
-    ],
+    ),
     key=lambda item: len(item[0]),
     reverse=True,
 )
 
 
-def _creator_id() -> int | None:
-    """Безопасно получает ID создателя из конфигурации."""
+def _creator_id() -> int:
+    """Возвращает Telegram ID создателя из конфигурации."""
     try:
-        value = int(config.OWNER_TELEGRAM_ID)
-        return value if value > 0 else None
-    except (AttributeError, TypeError, ValueError):
-        return None
+        return int(getattr(config, "OWNER_TELEGRAM_ID", 0) or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 async def ensure_table() -> None:
-    """Создаёт таблицу настроек, если её ещё нет."""
+    """Создаёт таблицу настроек рангов, если её ещё нет."""
     conn = await db.get_db()
     await conn.execute(
         """
         CREATE TABLE IF NOT EXISTS command_rank_overrides (
             chat_id INTEGER NOT NULL,
             command_code INTEGER NOT NULL,
-            min_rank INTEGER NOT NULL
-                CHECK(min_rank BETWEEN 0 AND 5),
+            min_rank INTEGER NOT NULL CHECK(min_rank BETWEEN 0 AND 5),
             updated_by INTEGER NOT NULL,
             updated_at REAL NOT NULL,
-            PRIMARY KEY (chat_id, command_code)
+            PRIMARY KEY(chat_id, command_code)
         )
         """
     )
@@ -143,7 +150,7 @@ async def ensure_table() -> None:
 
 
 def detect_command(text: str) -> int | None:
-    """Определяет команду по началу первой строки."""
+    """Определяет код команды по началу сообщения."""
     first_line = (text or "").split("\n", 1)[0].strip().lower()
 
     for alias, code in ALIASES:
@@ -157,13 +164,16 @@ def detect_command(text: str) -> int | None:
 
 
 async def get_rank(message: Message) -> int:
-    """Определяет ранг пользователя для проверки .дк."""
+    """Определяет ранг пользователя в конкретной группе."""
     user = message.from_user
     if user is None:
         return 0
 
     creator_id = _creator_id()
-    if creator_id is not None and user.id == creator_id:
+
+    # Ранг 5 принадлежит создателю бота из конфигурации,
+    # а не автоматически владельцу Telegram-группы.
+    if creator_id > 0 and user.id == creator_id:
         return 5
 
     from handlers.moderation import effective_role
@@ -183,15 +193,9 @@ async def get_rank(message: Message) -> int:
     }.get(role, 0)
 
 
-async def get_override(
-    chat_id: int,
-    code: int,
-) -> int | None:
-    """Возвращает настроенный ранг или None."""
-    if code not in COMMANDS:
-        return None
-
-    # Важно: таблица может ещё не существовать после первого запуска.
+async def get_override(chat_id: int, code: int) -> int | None:
+    """Получает индивидуальный минимальный ранг команды для группы."""
+    # Важно: таблица должна существовать и до первого вызова .дк.
     await ensure_table()
 
     conn = await db.get_db()
@@ -208,15 +212,11 @@ async def get_override(
     if row is None:
         return None
 
-    rank = int(row["min_rank"])
-    if rank not in RANK_NAMES:
-        return None
-
-    return rank
+    return int(row["min_rank"])
 
 
 class CommandRankMiddleware(BaseMiddleware):
-    """Применяет дополнительное ограничение ранга."""
+    """Проверяет настроенный минимальный ранг до выполнения команды."""
 
     async def __call__(self, handler, event, data):
         if not isinstance(event, Message) or not event.text:
@@ -225,6 +225,7 @@ class CommandRankMiddleware(BaseMiddleware):
         if event.from_user is None:
             return await handler(event, data)
 
+        # Команду настройки рангов проверяет отдельный обработчик.
         if re.match(r"(?i)^\.дк(?:\s|$)", event.text.strip()):
             return await handler(event, data)
 
@@ -237,47 +238,64 @@ class CommandRankMiddleware(BaseMiddleware):
         except Exception:
             await event.reply(
                 "⚠️ Не удалось проверить настройки рангов. "
-                "Команда не выполнена. Попробуйте позже."
+                "Команда не выполнена. Попробуй позже."
             )
             return
 
-        if minimum is not None:
-            try:
-                rank = await get_rank(event)
-            except Exception:
-                await event.reply(
-                    "⚠️ Не удалось определить ранг. "
-                    "Команда не выполнена."
-                )
-                return
+        # Если для команды нет переопределения,
+        # работают обычные правила её обработчика.
+        if minimum is None:
+            return await handler(event, data)
 
-            if rank < minimum:
-                await event.reply(
-                    f"⛔ Для этой команды нужен ранг "
-                    f"{minimum} — {RANK_NAMES[minimum]}."
-                )
-                return
+        try:
+            rank = await get_rank(event)
+        except Exception:
+            await event.reply(
+                "⚠️ Не удалось определить твой ранг. "
+                "Команда не выполнена."
+            )
+            return
 
-        # Настройка .дк не заменяет встроенные проверки команды.
+        if rank < minimum:
+            await event.reply(
+                f"⛔ Для этой команды нужен ранг "
+                f"{minimum} — {RANK_NAMES[minimum]}."
+            )
+            return
+
+        # Это дополнительная проверка, а не замена
+        # штатных проверок прав команды.
         return await handler(event, data)
 
 
 @router.message(F.text.regexp(r"(?i)^\.дк(?:\s|$)"))
 async def command_rank_settings(message: Message):
-    """Показывает коды команд и сохраняет настройки рангов."""
-    user = message.from_user
-    if user is None:
+    """Показывает коды команд и меняет их минимальные ранги."""
+    if message.from_user is None:
         return
 
     creator_id = _creator_id()
-    if creator_id is None or user.id != creator_id:
+
+    # Только создатель бота может менять эти настройки.
+    # message.from_user.id также используется в проверке GitHub Actions.
+    if creator_id <= 0 or message.from_user.id != creator_id:
         await message.reply(
             "⛔ Настраивать .дк может только создатель бота."
         )
         return
 
+    try:
+        await ensure_table()
+    except Exception:
+        await message.reply(
+            "⚠️ Не удалось подготовить таблицу настроек. "
+            "Проверь подключение к базе данных."
+        )
+        return
+
     parts = message.text.strip().split()
 
+    # .дк — вывести список доступных кодов.
     if len(parts) == 1:
         lines = [
             f"{code} — {', '.join(names)}"
@@ -288,20 +306,25 @@ async def command_rank_settings(message: Message):
             + "\n".join(lines)
             + "\n\nФормат: .дк КОД РАНГ"
             + "\nПример: .дк 20 3"
-            + "\nРанги: 0–5."
+            + "\n\nРанги:"
+            + "\n0 — Участник"
+            + "\n1 — Младший модератор"
+            + "\n2 — Старший модератор"
+            + "\n3 — Младший админ"
+            + "\n4 — Старший админ"
+            + "\n5 — Создатель"
         )
         return
 
     if (
         len(parts) != 3
-        or not parts[1].isascii()
         or not parts[1].isdigit()
-        or not parts[2].isascii()
         or not parts[2].isdigit()
     ):
         await message.reply(
-            "Формат: .дк КОД РАНГ\n"
-            "Пример: .дк 20 3"
+            "❌ Неверный формат.\n"
+            "Используй: .дк КОД РАНГ\n"
+            "Например: .дк 20 3"
         )
         return
 
@@ -321,7 +344,6 @@ async def command_rank_settings(message: Message):
         return
 
     try:
-        await ensure_table()
         conn = await db.get_db()
         await conn.execute(
             """
@@ -337,25 +359,29 @@ async def command_rank_settings(message: Message):
                 message.chat.id,
                 code,
                 rank,
-                user.id,
+                message.from_user.id,
                 time.time(),
             ),
         )
         await conn.commit()
+    except Exception:
+        await message.reply(
+            "⚠️ Не удалось сохранить настройки ранга. "
+            "Проверь базу данных и попробуй ещё раз."
+        )
+        return
 
+    # Ошибка журнала не должна отменять уже сохранённую настройку.
+    try:
         await db.log_action(
             message.chat.id,
-            user.id,
+            message.from_user.id,
             "command_rank_set",
             None,
             f"code={code}; min_rank={rank}",
         )
     except Exception:
-        await message.reply(
-            "⚠️ Не удалось сохранить настройку. "
-            "Проверьте журнал ошибок бота."
-        )
-        return
+        pass
 
     await message.reply(
         f"✅ Для команды «{', '.join(COMMANDS[code])}» "
